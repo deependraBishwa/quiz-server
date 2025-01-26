@@ -5,7 +5,6 @@ const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 // Enable CORS for cross-origin communication
 app.use(cors());
 
@@ -23,6 +22,11 @@ const io = new Server(server, {
 // Store connected users and their socket IDs
 const users = {};
 
+// Serve the list of connected users via an HTTP endpoint
+app.get("/users", (req, res) => {
+    res.json(Object.keys(users)); // Return only user IDs
+});
+
 io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
 
@@ -30,6 +34,9 @@ io.on("connection", (socket) => {
     socket.on("register", (userId) => {
         users[userId] = socket.id; // Map user ID to their socket ID
         console.log(`User registered: ${userId}`);
+        
+        // Broadcast the updated list of users to all clients
+        io.emit("user_list", Object.keys(users));
     });
 
     // Listen for private messages
@@ -57,6 +64,9 @@ io.on("connection", (socket) => {
             if (users[userId] === socket.id) {
                 delete users[userId];
                 console.log(`User disconnected: ${userId}`);
+                
+                // Broadcast the updated list of users
+                io.emit("user_list", Object.keys(users));
                 break;
             }
         }
